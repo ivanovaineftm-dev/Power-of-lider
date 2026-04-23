@@ -40,6 +40,49 @@ def _validate_extension(filename: str) -> str:
     return ext
 
 
+def _process_single_slot(slot: str, meta: Dict[str, str]) -> Dict[str, str]:
+    input_path = Path(meta["upload_path"])
+    if not input_path.exists():
+        raise HTTPException(status_code=404, detail=f"Uploaded file not found for slot: {slot}")
+
+    try:
+        df = pd.read_excel(input_path)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Failed to read Excel file: {exc}") from exc
+
+    new_columns = [
+        "Должность по состоянию на 05.02.2026",
+        "Истина",
+        "Подразделение по состоянию на 05.02.2026",
+        "Истина",
+    ]
+    new_values = [["", True, "", True] for _ in range(len(df))]
+    new_columns_df = pd.DataFrame(new_values, columns=new_columns)
+    df = pd.concat([df, new_columns_df], axis=1)
+
+    output_name = f"processed_{slot}_{uuid4().hex}.xlsx"
+    output_path = PROCESSED_DIR / output_name
+
+    try:
+        df.to_excel(output_path, index=False, engine="openpyxl")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to save processed file: {exc}") from exc
+
+    # Remove old processed file if exists
+    old = meta.get("processed_path")
+    if old:
+        old_path = Path(old)
+        if old_path.exists():
+            old_path.unlink()
+
+    meta["processed_path"] = str(output_path)
+
+    return {
+        "slot": slot,
+        "download_url": f"/api/download/{slot}",
+    }
+
+
 @app.post("/api/upload/{slot}")
 async def upload_file(slot: str, file: UploadFile = File(...)) -> dict:
     _validate_slot(slot)
@@ -80,53 +123,26 @@ async def clear_slot(slot: str) -> dict:
     return {"message": "Slot cleared", "slot": slot}
 
 
-@app.post("/api/process/{slot}")
-async def process_file(slot: str) -> dict:
-    _validate_slot(slot)
-    meta = FILE_REGISTRY.get(slot)
-    if not meta:
-        raise HTTPException(status_code=404, detail="No file uploaded for this slot")
+@app.post("/api/process")
+async def process_uploaded_files() -> dict:
+    if not FILE_REGISTRY:
+        raise HTTPException(status_code=400, detail="Загрузите хотя бы один файл перед обработкой")
 
-    input_path = Path(meta["upload_path"])
-    if not input_path.exists():
-        raise HTTPException(status_code=404, detail="Uploaded file not found")
-
-    try:
-        df = pd.read_excel(input_path)
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"Failed to read Excel file: {exc}") from exc
-
-    position_col = "Должность по состоянию на 05.02.2026"
-    truth_col_1 = "Истина"
-    department_col = "Подразделение по состоянию на 05.02.2026"
-    truth_col_2 = "Истина"
-
-    df[position_col] = ""
-    df[truth_col_1] = True
-    df[department_col] = ""
-    df[truth_col_2] = True
-
-    output_name = f"processed_{slot}_{uuid4().hex}.xlsx"
-    output_path = PROCESSED_DIR / output_name
-
-    try:
-        df.to_excel(output_path, index=False, engine="openpyxl")
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to save processed file: {exc}") from exc
-
-    # Remove old processed file if exists
-    old = meta.get("processed_path")
-    if old:
-        old_path = Path(old)
-        if old_path.exists():
-            old_path.unlink()
-
-    meta["processed_path"] = str(output_path)
+    processed_files = []
+    for slot, meta in FILE_REGISTRY.items():
+        processed = _process_single_slot(slot, meta)
+        processed_files.append(
+            {
+                "slot": processed["slot"],
+                "title": processed["slot"],
+                "download_url": processed["download_url"],
+            }
+        )
 
     return {
-        "message": "File processed",
-        "slot": slot,
-        "download_url": f"/api/download/{slot}",
+        "message": "Files processed",
+        "processed_count": len(processed_files),
+        "processed_files": processed_files,
     }
 
 

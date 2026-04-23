@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Обработка Excel</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>Обработка Excel-файлов</h1>
+    <p class="subtitle">Загрузите файлы, обработайте и скачайте результат.</p>
+
+    <section id="slots" class="grid"></section>
+  </main>
+
+  <template id="slot-template">
+    <article class="card">
+      <h2 class="slot-title"></h2>
+      <input type="file" class="file-input" accept=".xlsx,.xls" />
+      <p class="status">Файл не выбран</p>
+      <div class="actions">
+        <button class="upload-btn">Загрузить</button>
+        <button class="clear-btn secondary">Очистить</button>
+      </div>
+      <div class="actions">
+        <button class="process-btn">Обработать</button>
+        <a class="download-btn disabled" href="#" download>Скачать</a>
+      </div>
+    </article>
+  </template>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

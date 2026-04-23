@@ -6,6 +6,9 @@ const slotsConfig = [
 
 const slotsRoot = document.getElementById('slots');
 const template = document.getElementById('slot-template');
+const processAllBtn = document.getElementById('process-all-btn');
+const processStatus = document.getElementById('process-status');
+const downloadList = document.getElementById('download-list');
 
 function setStatus(el, text, isError = false) {
   el.textContent = text;
@@ -25,6 +28,27 @@ async function readResponsePayload(res) {
   }
 }
 
+function clearDownloadList() {
+  downloadList.innerHTML = '';
+}
+
+function renderDownloadLinks(items) {
+  clearDownloadList();
+
+  items.forEach((item) => {
+    const li = document.createElement('li');
+    const link = document.createElement('a');
+    link.href = item.download_url;
+    link.textContent = `Скачать результат: ${item.title}`;
+    link.setAttribute('download', '');
+
+    li.appendChild(link);
+    downloadList.appendChild(li);
+  });
+}
+
+const slotStatusByKey = new Map();
+
 slotsConfig.forEach(({ key, title }) => {
   const clone = template.content.cloneNode(true);
   const card = clone.querySelector('.card');
@@ -33,11 +57,10 @@ slotsConfig.forEach(({ key, title }) => {
   const status = clone.querySelector('.status');
   const uploadBtn = clone.querySelector('.upload-btn');
   const clearBtn = clone.querySelector('.clear-btn');
-  const processBtn = clone.querySelector('.process-btn');
-  const downloadBtn = clone.querySelector('.download-btn');
 
   titleEl.textContent = title;
   card.dataset.slot = key;
+  slotStatusByKey.set(key, status);
 
   input.addEventListener('change', () => {
     if (input.files.length > 0) {
@@ -67,9 +90,9 @@ slotsConfig.forEach(({ key, title }) => {
         throw new Error(data.detail || 'Ошибка загрузки');
       }
 
-      downloadBtn.classList.add('disabled');
-      downloadBtn.removeAttribute('href');
+      clearDownloadList();
       setStatus(status, `Загружено: ${data.filename}`);
+      setStatus(processStatus, 'Можно запускать обработку', false);
     } catch (err) {
       setStatus(status, err.message, true);
     }
@@ -84,29 +107,35 @@ slotsConfig.forEach(({ key, title }) => {
       }
 
       input.value = '';
-      downloadBtn.classList.add('disabled');
-      downloadBtn.removeAttribute('href');
+      clearDownloadList();
       setStatus(status, 'Файл не выбран');
     } catch (err) {
       setStatus(status, err.message, true);
     }
   });
 
-  processBtn.addEventListener('click', async () => {
-    try {
-      const res = await fetch(`/api/process/${key}`, { method: 'POST' });
-      const data = await readResponsePayload(res);
-      if (!res.ok) {
-        throw new Error(data.detail || 'Ошибка обработки');
-      }
-
-      downloadBtn.href = data.download_url;
-      downloadBtn.classList.remove('disabled');
-      setStatus(status, 'Файл обработан. Можно скачать результат.');
-    } catch (err) {
-      setStatus(status, err.message, true);
-    }
-  });
-
   slotsRoot.appendChild(clone);
+});
+
+processAllBtn.addEventListener('click', async () => {
+  try {
+    const res = await fetch('/api/process', { method: 'POST' });
+    const data = await readResponsePayload(res);
+    if (!res.ok) {
+      throw new Error(data.detail || 'Ошибка обработки');
+    }
+
+    renderDownloadLinks(data.processed_files || []);
+
+    (data.processed_files || []).forEach((item) => {
+      const status = slotStatusByKey.get(item.slot);
+      if (status) {
+        setStatus(status, 'Файл обработан. Результат доступен для скачивания.');
+      }
+    });
+
+    setStatus(processStatus, `Обработано файлов: ${data.processed_count}`);
+  } catch (err) {
+    setStatus(processStatus, err.message, true);
+  }
 });

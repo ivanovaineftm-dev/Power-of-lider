@@ -12,6 +12,12 @@
     <p class="subtitle">Загрузите файлы, обработайте и скачайте результат.</p>
 
     <section id="slots" class="grid"></section>
+
+    <section class="global-actions">
+      <button id="process-all-btn">Обработать</button>
+      <p id="process-status" class="status">Нет загруженных файлов для обработки</p>
+      <ul id="download-list" class="download-list"></ul>
+    </section>
   </main>
 
   <template id="slot-template">
@@ -22,10 +28,6 @@
       <div class="actions">
         <button class="upload-btn">Загрузить</button>
         <button class="clear-btn secondary">Очистить</button>
-      </div>
-      <div class="actions">
-        <button class="process-btn">Обработать</button>
-        <a class="download-btn disabled" href="#" download>Скачать</a>
       </div>
     </article>
   </template>

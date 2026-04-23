@@ -42,7 +42,8 @@ h1 {
   margin-top: 10px;
 }
 
-button, .download-btn {
+button,
+.download-btn {
   border: none;
   border-radius: 8px;
   padding: 8px 12px;
@@ -63,9 +64,26 @@ button, .download-btn {
 
 .disabled {
   pointer-events: none;
-  opacity: .5;
+  opacity: 0.5;
 }
 
 .status {
   min-height: 40px;
+}
+
+.global-actions {
+  margin-top: 20px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 16px;
+}
+
+.download-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.download-list a {
+  color: #1d4ed8;
 }

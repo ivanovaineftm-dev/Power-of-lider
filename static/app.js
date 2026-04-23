@@ -12,6 +12,19 @@ function setStatus(el, text, isError = false) {
   el.style.color = isError ? '#b00020' : '#1f2937';
 }
 
+async function readResponsePayload(res) {
+  const raw = await res.text();
+  if (!raw) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return { detail: raw };
+  }
+}
+
 slotsConfig.forEach(({ key, title }) => {
   const clone = template.content.cloneNode(true);
   const card = clone.querySelector('.card');
@@ -48,7 +61,7 @@ slotsConfig.forEach(({ key, title }) => {
         method: 'POST',
         body: formData
       });
-      const data = await res.json();
+      const data = await readResponsePayload(res);
 
       if (!res.ok) {
         throw new Error(data.detail || 'Ошибка загрузки');
@@ -65,8 +78,8 @@ slotsConfig.forEach(({ key, title }) => {
   clearBtn.addEventListener('click', async () => {
     try {
       const res = await fetch(`/api/upload/${key}`, { method: 'DELETE' });
+      const data = await readResponsePayload(res);
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.detail || 'Ошибка очистки');
       }
 
@@ -82,7 +95,7 @@ slotsConfig.forEach(({ key, title }) => {
   processBtn.addEventListener('click', async () => {
     try {
       const res = await fetch(`/api/process/${key}`, { method: 'POST' });
-      const data = await res.json();
+      const data = await readResponsePayload(res);
       if (!res.ok) {
         throw new Error(data.detail || 'Ошибка обработки');
       }
